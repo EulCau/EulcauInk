@@ -16,7 +16,7 @@ interface MarkdownEditorProps {
   viewMode: ViewMode;
   editorRef: React.RefObject<ReactCodeMirrorRef>;
   readOnly?: boolean;
-  onNavigate?: (target: string) => void; // New prop for internal navigation
+  onNavigate?: (target: string) => void;
 }
 
 export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({ 
@@ -41,47 +41,61 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
   const showEditor = viewMode === ViewMode.EDIT_ONLY || viewMode === ViewMode.SPLIT;
   const showPreview = viewMode === ViewMode.PREVIEW_ONLY || viewMode === ViewMode.SPLIT;
 
-  // Handle all link clicks in preview
-  const handlePreviewClick = (e: React.MouseEvent<HTMLDivElement>) => {
-    const target = e.target as HTMLElement;
-    const anchor = target.closest('a');
-    
-    if (anchor) {
-      const rawHref = anchor.getAttribute('href');
-      if (!rawHref) return;
-
-      // STOP WebView from standard navigation behavior
-      e.preventDefault(); 
+  // Unified Link Handler Logic
+  const handleLinkClick = (e: React.MouseEvent, href?: string) => {
+      // 1. ALWAYS prevent default browser navigation immediately.
+      // This stops the WebView from trying to load the URL, preventing crashes/refreshes.
+      e.preventDefault();
       e.stopPropagation();
 
-      const href = rawHref.trim();
+      if (!href) return;
 
-      // 1. External Links (http/https)
+      const lowerHref = href.toLowerCase();
+
+      // 2. Block 'file://' explicitly
+      // React-markdown might sometimes pass 'file:' protocol through depending on version.
+      // We block it here to prevent crashes.
+      if (lowerHref.startsWith('file:') || lowerHref.startsWith('content:')) {
+          const msg = "Local file/content links are not supported.";
+          if (window.Android && window.Android.showToast) {
+              window.Android.showToast(msg);
+          } else {
+              alert(msg);
+          }
+          return;
+      }
+
+      // 3. Handle Email (mailto:) and Phone (tel:)
+      if (lowerHref.startsWith('mailto:') || lowerHref.startsWith('tel:')) {
+        if (window.Android && window.Android.openExternalLink) {
+          // Android Intent.ACTION_VIEW handles these protocols natively
+          window.Android.openExternalLink(href);
+        } else {
+          // Web fallback: '_self' triggers the protocol handler without opening a blank tab
+          window.open(href, '_self');
+        }
+        return;
+      }
+
+      // 4. External Links (http/https)
       if (/^https?:\/\//i.test(href)) {
         if (window.Android && window.Android.openExternalLink) {
           window.Android.openExternalLink(href);
         } else {
-          // Web fallback
           window.open(href, '_blank');
         }
         return;
       }
 
-      // 2. Anchor Links (#section)
+      // 5. Anchor Links (#section)
       if (href.startsWith('#')) {
         try {
-          // Decode URI to support Chinese/Special characters (e.g., #%E4%BD%A0%E5%A5%BD -> #你好)
           const id = decodeURIComponent(href.substring(1));
-          
-          // Try exact match first
           let element = document.getElementById(id);
-          
-          // Fallback: Try slugified version if exact match fails (rehype-slug usually lowercases and hyphenates)
           if (!element) {
              const slugId = id.toLowerCase().replace(/\s+/g, '-');
              element = document.getElementById(slugId);
           }
-
           if (element) {
             element.scrollIntoView({ behavior: 'smooth', block: 'start' });
           }
@@ -91,12 +105,10 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
         return;
       }
 
-      // 3. Internal Note Links (file.md)
-      // If it looks like a relative file link, try to navigate internally
+      // 6. Internal Note Links (everything else)
       if (onNavigate) {
          onNavigate(href);
       }
-    }
   };
 
   return (
@@ -146,13 +158,27 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
       {/* Preview Pane */}
       {showPreview && (
         <div 
-            onClick={handlePreviewClick}
             className={`h-full overflow-y-auto bg-white p-8 prose prose-slate max-w-none ${viewMode === ViewMode.SPLIT ? 'w-1/2' : 'w-full'}`}
         >
           <ReactMarkdown
             remarkPlugins={[remarkGfm, remarkMath]}
             rehypePlugins={[rehypeKatex, rehypeSlug]}
+            // Allow all URLs to pass through sanitization so we can catch them in onClick
+            urlTransform={(value: string) => value}
             components={{
+              // Custom Link Component to strictly control navigation
+              a: ({node, href, children, ...props}) => {
+                  return (
+                      <a 
+                        href={href} 
+                        onClick={(e) => handleLinkClick(e, href)} 
+                        className="text-blue-600 hover:underline cursor-pointer"
+                        {...props}
+                      >
+                          {children}
+                      </a>
+                  );
+              },
               img: ({node, ...props}) => (
                 <span className="block my-4 text-center">
                     {/* eslint-disable-next-line jsx-a11y/alt-text */}
