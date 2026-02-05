@@ -1,11 +1,10 @@
-import React from 'react';
-import { FileText, Plus, Trash2, GripVertical } from 'lucide-react';
+import React, { useState } from 'react';
+import { FileText, Plus, Trash2, GripVertical, AlertTriangle } from 'lucide-react';
 import { NoteItem } from '../types';
 import {
   DndContext,
   closestCenter,
   KeyboardSensor,
-  PointerSensor,
   useSensor,
   useSensors,
   DragEndEvent,
@@ -101,6 +100,9 @@ export const NoteList: React.FC<NoteListProps> = ({
   onReorderNotes
 }) => {
   
+  // State for the custom delete confirmation modal
+  const [noteToDelete, setNoteToDelete] = useState<NoteItem | null>(null);
+
   // Configure sensors for Long Press on mobile
   const sensors = useSensors(
     useSensor(MouseSensor, {
@@ -131,11 +133,46 @@ export const NoteList: React.FC<NoteListProps> = ({
     }
   };
 
+  const confirmDelete = () => {
+    if (noteToDelete) {
+      onDeleteNote(noteToDelete.filename);
+      setNoteToDelete(null);
+    }
+  };
+
   return (
-    <div className="h-full flex flex-col bg-gray-50">
+    <div className="h-full flex flex-col bg-gray-50 relative">
       <header className="h-16 bg-white border-b border-gray-200 flex items-center justify-between px-6 shadow-sm z-10 shrink-0">
         <h1 className="text-xl font-bold text-gray-800 flex items-center gap-2">
-          <span className="text-blue-600 text-2xl">⚡</span> EulCauInk
+          <svg
+            className="w-7 h-7 text-blue-600"
+            viewBox="0 0 64 64"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            aria-hidden="true"
+          >
+            {/* Notebook */}
+            <rect x="10" y="8" width="34" height="48" rx="4" />
+
+            {/* Notebook spine */}
+            <line x1="16" y1="8" x2="16" y2="56" />
+
+            {/* Markdown M */}
+            <path d="M22 36 L22 24 L26 30 L30 24 V36" />
+
+            {/* Down arrow */}
+            <line x1="26" y1="38" x2="26" y2="44" />
+            <path d="M23 41 L26 44 L29 41" />
+
+            {/* Pen */}
+            <path d="M40 18 L56 34" />
+            <path d="M38 20 L42 16 L58 32 L54 36 Z" />
+            <path d="M54 36 L60 38 L58 32 Z" />
+          </svg>
+          EulCauInk
         </h1>
         <button
           onClick={onCreateNote}
@@ -171,9 +208,8 @@ export const NoteList: React.FC<NoteListProps> = ({
                     onSelect={() => onSelectNote(note.filename)}
                     onDelete={(e) => {
                       e.stopPropagation();
-                      if (confirm(`Delete "${note.title}"?`)) {
-                        onDeleteNote(note.filename);
-                      }
+                      // Trigger custom modal instead of window.confirm
+                      setNoteToDelete(note);
                     }}
                   />
                 ))}
@@ -189,6 +225,44 @@ export const NoteList: React.FC<NoteListProps> = ({
             Long press to reorder
          </span>
       </div>
+
+      {/* Custom Delete Confirmation Modal */}
+      {noteToDelete && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm animate-in fade-in duration-200">
+          <div 
+            className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6 transform scale-100 animate-in zoom-in-95 duration-200"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center gap-3 mb-4 text-red-600">
+              <div className="p-2 bg-red-100 rounded-full">
+                <AlertTriangle size={24} />
+              </div>
+              <h3 className="text-lg font-bold text-gray-900">Delete Note?</h3>
+            </div>
+            
+            <p className="text-gray-600 mb-6 leading-relaxed">
+              Are you sure you want to delete <span className="font-semibold text-gray-900">"{noteToDelete.title}"</span>? 
+              <br/>
+              This action cannot be undone.
+            </p>
+            
+            <div className="flex justify-end space-x-3">
+              <button 
+                onClick={() => setNoteToDelete(null)}
+                className="px-5 py-2.5 text-gray-700 font-medium hover:bg-gray-100 rounded-xl transition-colors"
+              >
+                Cancel
+              </button>
+              <button 
+                onClick={confirmDelete}
+                className="px-5 py-2.5 bg-red-600 text-white font-medium rounded-xl hover:bg-red-700 shadow-lg shadow-red-200 active:scale-95 transition-all"
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
