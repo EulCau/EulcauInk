@@ -32,14 +32,37 @@ This is a pure frontend React application designed to run inside an Android `Web
 
 ## 📱 Android Integration Guide
 
-### 1. Dependencies (build.gradle)
+### 1. Permissions (AndroidManifest.xml)
+
+**CRITICAL:** You must add the Internet permission to load external images (e.g., `![img](https://...)`).
+
+```xml
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    package="com.example.eulcauink">
+
+    <!-- REQUIRED for loading external images -->
+    <uses-permission android:name="android.permission.INTERNET" />
+
+    <application
+        android:allowBackup="true"
+        android:icon="@mipmap/ic_launcher"
+        android:label="@string/app_name"
+        android:theme="@style/Theme.EulCauInk"
+        android:usesCleartextTraffic="true"> <!-- Optional: Allow HTTP images -->
+        
+        <!-- ... activities ... -->
+    </application>
+</manifest>
+```
+
+### 2. Dependencies (build.gradle)
 
 ```groovy
 implementation "androidx.webkit:webkit:1.9.0"
 implementation "com.google.code.gson:gson:2.10.1" 
 ```
 
-### 2. The Bridge (Kotlin Implementation)
+### 3. The Bridge (Kotlin Implementation)
 
 Here is the recommended **Kotlin** implementation.
 **Crucial:** Ensure `saveNote`, `loadNote`, and `deleteNote` all operate on the exact same directory (`notesDir`).
@@ -142,13 +165,29 @@ class WebAppInterface(private val context: Context) {
 }
 ```
 
-### 3. WebView Setup
+### 4. WebView Setup
 
-Keep the existing `WebViewAssetLoader` setup. Ensure you handle the interception of image requests if you are storing images in internal storage.
-
-**Example AssetLoader Configuration (Kotlin):**
+Configure `WebSettings` to allow mixed content and DOM storage.
 
 ```kotlin
+import android.webkit.WebSettings
+import android.webkit.WebView
+import android.webkit.WebViewClient
+// ... other imports
+
+// In your Activity or Fragment:
+val webView: WebView = findViewById(R.id.webview)
+
+webView.settings.apply {
+    javaScriptEnabled = true
+    domStorageEnabled = true // Required for localStorage
+    databaseEnabled = true
+    
+    // CRITICAL: Allows loading http/https images when running from file:// or custom schemes
+    mixedContentMode = WebSettings.MIXED_CONTENT_ALWAYS_ALLOW 
+}
+
+// AssetLoader Configuration
 val assetLoader = WebViewAssetLoader.Builder()
     .addPathHandler("/assets/", WebViewAssetLoader.AssetsPathHandler(this))
     // Map https://eulcauink.local/user-images/ to your internal imagesDir
@@ -160,6 +199,15 @@ webView.webViewClient = object : WebViewClient() {
         return assetLoader.shouldInterceptRequest(request.url)
     }
 }
+
+// Attach JS Interface
+webView.addJavascriptInterface(WebAppInterface(this), "Android")
+
+// Load the app
+// Note: Using the virtual domain defined in imageService.ts ensures consistency
+webView.loadUrl("https://eulcauink.local/assets/index.html")
+// OR if not using asset loader strictly for html:
+// webView.loadUrl("file:///android_asset/index.html")
 ```
 
 ## ✍️ Handwriting Logic

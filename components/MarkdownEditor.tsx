@@ -182,7 +182,17 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
               img: ({node, ...props}) => (
                 <span className="block my-4 text-center">
                     {/* eslint-disable-next-line jsx-a11y/alt-text */}
-                    <img {...props} className="max-h-[500px] mx-auto rounded shadow-sm border border-gray-100" />
+                    <img 
+                        {...props} 
+                        className="max-h-[500px] mx-auto rounded shadow-sm border border-gray-100" 
+                        referrerPolicy="no-referrer"
+                        onError={(e) => {
+                            const target = e.target as HTMLImageElement;
+                            target.style.display = 'none';
+                            // Optional: Insert a text placeholder or icon here if needed
+                            target.parentElement?.insertAdjacentHTML('beforeend', `<span class="text-red-500 text-sm p-2 border border-red-200 rounded bg-red-50 block">Image failed to load: ${target.src}</span>`);
+                        }}
+                    />
                 </span>
               )
             }}
