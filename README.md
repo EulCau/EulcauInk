@@ -4,12 +4,12 @@
 
 This is a pure frontend React application designed to run inside an Android `WebView`. It features a CodeMirror markdown editor, a note list manager, and stylus handwriting support.
 
-## 🛠 Web Development
+## Web Development
 
 1. Install dependencies: `npm install`
 2. Run dev server: `npm run dev`
 
-## 📦 How to Package for Android
+## How to Package for Android
 
 1. Run the install command:
 
@@ -30,7 +30,7 @@ This is a pure frontend React application designed to run inside an Android `Web
     `src/main/assets/`
 4. Ensure your WebView loads `file:///android_asset/index.html` or uses the `WebViewAssetLoader` method described below (recommended).
 
-## 📱 Android Integration Guide
+## Android Integration Guide
 
 ### 1. Permissions (AndroidManifest.xml)
 
@@ -347,6 +347,15 @@ class WebAppInterface(private val activity: MainActivity) {
 }
 ```
 
-## ✍️ Handwriting Logic
+## Handwriting Logic
 
 The Canvas component strictly listens to `pointerType === 'pen'` for native-like palm rejection.
+
+## License
+
+This project is licensed under the MIT License.
+
+## Acknowledgements
+
+- Open-source communities including React, Tailwind CSS, CodeMirror, and Android WebView
+- AI-assisted development with ChatGPT and google AI Studio
