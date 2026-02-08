@@ -2,7 +2,7 @@
 
 ## Project Overview
 
-This is a pure frontend React application designed to run inside an Android `WebView`. It features a CodeMirror markdown editor, a note list manager, and stylus handwriting support.
+This is a pure frontend React application designed to run inside an Android `WebView`. It features a CodeMirror markdown editor, a note list manager, and stylus handwriting support. For more details, please refer to the README in the GitHub repository: [EulCau/EulCauInkApp](https://github.com/EulCau/EulCauInkApp).
 
 ## Web Development
 
